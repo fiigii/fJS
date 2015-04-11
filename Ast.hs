@@ -65,11 +65,13 @@ getTypeFromContext :: Context -> String -> Either String Ty
 getTypeFromContext ctx name =
   case find byName ctx of Just (VarBind _ VariableDef _ ty) -> Right ty
                           _ -> Left $ "No type recorded for variable " ++ show name
-  where byName (VarBind n _ _ _) = n == name
+  where byName (VarBind n VariableDef _ _) = n == name
+        byName _ = False
 
 getValueFromContext :: Context -> String -> Either String Ast
 getValueFromContext ctx name =
   case find byName ctx of Just (VarBind _ VariableDef value _) -> Right value
                           _ -> Left $ "Unknown variable: " ++ show name
-  where byName (VarBind n _ _ _) = n == name
+  where byName (VarBind n VariableDef _ _) = n == name
+        byName _ = False
     

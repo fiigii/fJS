@@ -8,29 +8,30 @@ import Ast
 
 -- TypeChecker
 typeOf :: Context -> Ast -> Either String Ty
-typeOf ctx (TmVar i) = getTypeFromContext ctx i
-typeOf ctx (TmAbs ty1 t) = TyFun ty1 <$> ty2
-  where ty2 = typeOf ((VarBind ty1): ctx) t
-typeOf ctx (TmApp t1 t2) = do ty1 <- typeOf ctx t1
-                              ty2 <- typeOf ctx t2
-                              case ty1 of TyFun ty11 ty12 -> if ty2 `isSubtypeOf` ty11
-                                                             then return ty12
-                                                             else Left  "parameter type mismatch"
-                                          _ -> Left "Function needs arrow tpye"
+typeOf ctx (Var i) = getTypeFromContext ctx i
+typeOf ctx (Function (name, ty1) t) = TyFun ty1 <$> ty2
+  where ty2 = typeOf (extendContext ctx name VariableDef t ty1) t
+typeOf ctx (Appliction t1 t2) =
+  do ty1 <- typeOf ctx t1
+     ty2 <- typeOf ctx t2
+     case ty1 of TyFun ty11 ty12 -> if ty2 `isSubtypeOf` ty11
+                                    then return ty12
+                                    else Left  "parameter type mismatch"
+                 _ -> Left "Function needs arrow tpye"
 
-typeOf ctx (TmIf t1 t2 t3) = if (typeOf ctx t1) == Right TyBool
-                             then let ty2 = typeOf ctx t2
-                                      ty3 = typeOf ctx t3
-                                      unionType = joinOf <$> ty2 <*> ty3
-                                  in unionType
-                             else Left "Conditional type should be Bool"
-typeOf ctx (TmBool _) = Right TyBool
-typeOf ctx (TmNat _) = Right TyNat
-typeOf ctx TmUnit = Right TyUnit
-typeOf ctx (TmRef t) = TyRef <$> typeOf ctx t
-typeOf ctx (TmDeRef t) = case typeOf ctx t of Right (TyRef ty) -> Right ty
-                                              _ -> Left "Need a Ref Type"
-typeOf ctx (TmAssign t1 t2) =
+typeOf ctx (IfExpr t1 t2 t3) = if (typeOf ctx t1) == Right TyBool
+                               then let ty2 = typeOf ctx t2
+                                        ty3 = typeOf ctx t3
+                                        unionType = joinOf <$> ty2 <*> ty3
+                                    in unionType
+                               else Left "Conditional type should be Bool"
+typeOf ctx (Bool _) = Right TyBool
+typeOf ctx (Number _) = Right TyNum
+typeOf ctx Unit = Right TyUnit
+typeOf ctx (Ref t) = TyRef <$> typeOf ctx t
+typeOf ctx (DeRef t) = case typeOf ctx t of Right (TyRef ty) -> Right ty
+                                            _ -> Left "Need a Ref Type"
+typeOf ctx (Assign t1 t2) =
   let ty1 = typeOf ctx t1
       ty2 = typeOf ctx t2
   in case ty1 of Right (TyRef ty11) ->
@@ -39,24 +40,24 @@ typeOf ctx (TmAssign t1 t2) =
                                              else Left "Type of assign mismatch"
                                Left error -> Left error
                  _ -> Left "Need a Ref type one the left side of \"=\""
-typeOf ctx (TmRecord rs) = TyRecord <$> mapM (\(l, t) -> (,) l <$> typeOf ctx t) rs
-typeOf ctx (TmAccess t l) = case tyOfTm of Right (TyRecord tys) -> lookup l tys
+typeOf ctx (Record rs) = TyRecord <$> mapM (\(l, t) -> (,) l <$> typeOf ctx t) rs
+typeOf ctx (Access t l) = case tyOfLeft of Right (TyRecord tys) -> lookup l tys
                                            Right _ -> Left "Need a Record"
                                            Left error -> Left error
-  where tyOfTm = typeOf ctx t
+  where tyOfLeft = typeOf ctx t
         lookup :: String -> TyRecord -> Either String Ty
         lookup s [] = Left $ "There is not \"" ++ s ++ "\" in the record"
         lookup s ((s1, ty1):tys) = if s1 == s then Right ty1 else lookup s tys
 
-typeOf ctx (TmBinary op t1 t2) =
+typeOf ctx (BinaryExpr op t1 t2) =
   let ty1 = typeOf ctx t1
       ty2 = typeOf ctx t2
   in case ty1 of Right ty11 ->
-                   case ty2 of Right ty22  -> if ty11 == TyNat && ty22 == TyNat
+                   case ty2 of Right ty22  -> if ty11 == TyNum && ty22 == TyNum
                                               then if isLogicOp op
                                                    then Right TyBool
                                                    else if isArithOp op
-                                                        then Right TyNat
+                                                        then Right TyNum
                                                         else Left "Illeigl Operator"
                                               else Left "Need two Numbers!"
                                Left error -> Left error
