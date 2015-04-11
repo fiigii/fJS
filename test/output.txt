@@ -1,0 +1,8 @@
+ True:  Top
+ True:  Bool
+There is not "a" in the record
+ 1:  Number
+ λ: Bool. if 0 then{ λ:{ a: Bool, b: Number, }. 0 }else{ λ:{ a: Bool, c: Number, }. 0 }:  Bool ->{ a: Bool, b: Number, c: Number, } ->{ a: Bool, }
+ 10:  Number
+ ():  Unit
+ 199:  Number
