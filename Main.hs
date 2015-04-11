@@ -7,7 +7,7 @@ import Control.Monad
 
 import Parser
 import TypeChecker
-import Interpreter
+--import Interpreter
 import Ast
 
 main :: IO ()
@@ -25,8 +25,8 @@ interpreter :: String -> [String]
 interpreter source = case jsparse source of Right ts -> map takeOut (map interp ts)
                                             Left error -> [show error]
                                                               
-  where interp t = do dt <- removeNames t
-                      ty <- typeOf [] dt
-                      return $ show (fst $ eval [] dt) ++ ": " ++ show ty
+  where interp t = do ty <- typeOf [] t
+                      return $ show ty
+                      --return $ show (fst $ eval [] dt) ++ ": " ++ show ty
         takeOut (Right str) = str
         takeOut (Left str)  = str

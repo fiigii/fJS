@@ -150,15 +150,17 @@ arg :: Parser (String, Ty)
 arg = do whiteSpace
          formal <- identifier
          reservedOp ":"
-         ty <- argTy
+         ty <- parseType
          return (formal, ty)
 
 --- Types
-argTy :: Parser Ty
-argTy = do whiteSpace
-           t <- parseType
+parseType = funTy
+
+funTy :: Parser Ty
+funTy = do whiteSpace
+           t <- tyTerm
            (do reservedOp "->"
-               tt <- argTy
+               tt <- funTy
                return $ TyFun t tt) <|> return t
 
 boolTy :: Parser Ty
@@ -189,8 +191,8 @@ unitTy = reserved "Unit" >> return TyUnit
 topTy :: Parser Ty
 topTy = reserved "Top" >> return TyTop
 
-parseType :: Parser Ty
-parseType = parens argTy <|> boolTy <|> numTy <|> recordTy <|> refTy <|>
+tyTerm :: Parser Ty
+tyTerm = parens funTy <|> boolTy <|> numTy <|> recordTy <|> refTy <|>
          unitTy <|> topTy
 
 --- statement
