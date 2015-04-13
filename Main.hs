@@ -11,18 +11,18 @@ import TypeChecker
 import Ast
 
 main :: IO ()
-main = do withFile
-            "test/lambda.js"
-            ReadMode
-            (\handle -> do
-                source <- hGetContents handle
-                -- putStrLn $ show $ jsparse source
-                mapM_ putStrLn $ interpreter source
-            )
+main = withFile
+       "test/lambda.js"
+       ReadMode
+       (\handle -> do
+           source <- hGetContents handle
+           -- putStrLn $ show $ jsparse source
+           mapM_ putStrLn $ interpreter source
+       )
                                                  
 -- Some glue code
 interpreter :: String -> [String]
-interpreter source = case jsparse source of Right ts -> map takeOut (map interp ts)
+interpreter source = case jsparse source of Right ts -> map (takeOut . interp) ts
                                             Left error -> [show error]
                                                               
   where interp t = do ty <- typeOf [] t

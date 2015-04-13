@@ -19,7 +19,7 @@ typeOf ctx (Appliction t1 t2) =
                                     else Left  "parameter type mismatch"
                  _ -> Left "Function needs arrow tpye"
 
-typeOf ctx (IfExpr t1 t2 t3) = if (typeOf ctx t1) == Right TyBool
+typeOf ctx (IfExpr t1 t2 t3) = if typeOf ctx t1 == Right TyBool
                                then let ty2 = typeOf ctx t2
                                         ty3 = typeOf ctx t3
                                         unionType = joinOf <$> ty2 <*> ty3

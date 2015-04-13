@@ -38,12 +38,12 @@ whiteSpace = P.whiteSpace lexer
 commaSep = P.commaSep lexer
 commaSep1 = P.commaSep1 lexer
 semi = P.semi lexer
-str_lit  = P.stringLiteral lexer
-integer_lit = P.integer lexer
+strLit  = P.stringLiteral lexer
+integerLit = P.integer lexer
 
 -- The parser
 prog :: Parser [Ast]
-prog = (expr) `endBy` semi
+prog = expr `endBy` semi
 
 --- Asts
 term :: Parser Ast
@@ -51,10 +51,10 @@ term  = parens expr <|> var <|> literal <|> refCreat <|>
         deRef <|> funcExpr
 
 str :: Parser Ast
-str = String <$> str_lit
+str = String <$> strLit
 
 num :: Parser Ast
-num = Number . fromIntegral <$> integer_lit
+num = Number . fromIntegral <$> integerLit
 
 literal :: Parser Ast
 literal = bool <|> str <|> record <|> num <|> unit
@@ -63,19 +63,18 @@ unit :: Parser Ast
 unit = reserved "unit" >> return Unit
 
 bool :: Parser Ast
-bool = (reserved "true" >> (return $ Bool True))
-       <|> (reserved "false" >> (return $ Bool False))
+bool = (reserved "true" >> return (Bool True))
+       <|> (reserved "false" >> return (Bool False))
 
 record :: Parser Ast
-record = (braces . commaSep1) recordTerm >>=
-           (\rs -> return $ Record  rs)
+record = Record $ (braces . commaSep1) recordTerm
 
 recordTerm :: Parser (String, Ast)
 recordTerm = do whiteSpace
                 label <- identifier
                 reservedOp "=>"
                 init <- expr
-                return $ (label, init)
+                return (label, init)
 
 refCreat :: Parser Ast
 refCreat = reserved "ref" >> term >>= \tm -> return $ Ref tm
@@ -142,7 +141,7 @@ condExpr' e = do reservedOp "?"
 funcExpr :: Parser Ast
 funcExpr  = do whiteSpace
                reserved "function"
-               v  <- parens $ arg
+               v  <- parens arg
                body <- expr
                return $ Function v body
 
@@ -172,8 +171,7 @@ numTy = reserved "Number" >> return TyNum
 nuitTy = reserved "Unit" >> return TyUnit
 
 recordTy :: Parser Ty
-recordTy = (braces . commaSep1) recordTyItem >>=
-             (\rs -> return $ TyRecord  rs)
+recordTy =  TyRecord $ (braces . commaSep1) recordTyItem
 
 recordTyItem :: Parser (String, Ty)
 recordTyItem =  do whiteSpace

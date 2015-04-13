@@ -50,7 +50,7 @@ instance Show Ty where
                          ts ++
                          "}"
 
-type Context = [(Binding)]
+type Context = [Binding]
 
 data Binding = VarBind String BindingForm Ast Ty
              deriving (Eq, Show)
@@ -59,7 +59,7 @@ data BindingForm = VariableDef | TypeDef
                  deriving (Show, Eq)
 
 extendContext :: Context -> String -> BindingForm -> Ast -> Ty -> Context
-extendContext ctx name form value ty = (VarBind name form value ty) : ctx
+extendContext ctx name form value ty = VarBind name form value ty : ctx
 
 getTypeFromContext :: Context -> String -> Either String Ty
 getTypeFromContext ctx name =

@@ -15,7 +15,7 @@ extendstore store t = (length store, store ++ [t])
 
 updatestore :: Store -> Int -> Ast -> Store
 updatestore (v':rest) 0 v = v':rest
-updatestore (v':rest) n v = v:(updatestore rest (n-1) v)
+updatestore (v':rest) n v = v: updatestore rest (n-1) v
 
 eval :: Store -> Ast -> (Ast, Store)
 eval store f@(Function _ _) = Closure f [1] 
@@ -53,7 +53,7 @@ eval store (TmBinary op t1 t2) =
   in case op of "+" -> numOp (+)
                 "-" -> numOp (-)
                 "*" -> numOp (*)
-                "/" -> numOp (div)
+                "/" -> numOp div
                 ">" -> logOp (>)
                 ">=" -> logOp (>=)
                 "<" -> logOp (<)
