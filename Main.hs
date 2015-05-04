@@ -19,13 +19,13 @@ main = withFile
        (\handle -> do
            source <- hGetContents handle
            -- putStrLn $ show $ jsparse source
-           mapM_ putStrLn $ interpreter source
+           putStrLn $ interpreter source
        )
                                                  
 -- Some glue code
-interpreter :: String -> [String]
-interpreter source = case jsparse source of Right ts -> map interp ts
-                                            Left error -> [show error]
+interpreter :: String -> String
+interpreter source = case jsparse source of Right ts -> interp ts
+                                            Left error -> show error
                                                               
   where interp t = show $ runReader (eval t) Map.empty
 
