@@ -9,9 +9,11 @@ import Text.Parsec.Expr
 import Control.Applicative ((<*>), (<$>), (*>), (<*), pure, (<$))
 import Control.Monad
 
+import Data.List (lookup, filter)
+
 import Ast
 
-jsparse :: String -> Either ParseError [Ast]
+jsparse :: String -> Either ParseError Ast
 jsparse  = parse prog ""
 
 -- The scanner.
@@ -23,7 +25,8 @@ lexer = P.makeTokenParser emptyDef {
   T.identStart = letter <|> char '_' <|> char '$',
   T.identLetter     = alphaNum,
   T.reservedNames   = ["function", "var", "true", "false", "Bool", "Number",
-                       "Unit", "unit", "let", "if", "then", "else", "in"],
+                       "Unit", "unit", "let", "if", "then", "else", "in", "head",
+                       "tail"],
   T.reservedOpNames = ["=", "?", ":", "->", "=>", "+", "-", "*", "/", "!",
                        "==", "!=", ">", "<", ">=", "<="],
   T.caseSensitive   = True
@@ -31,6 +34,7 @@ lexer = P.makeTokenParser emptyDef {
 
 parens = P.parens lexer
 braces = P.braces lexer
+brackets = P.brackets lexer
 reserved = P.reserved lexer
 reservedOp = P.reservedOp lexer
 identifier = P.identifier lexer
@@ -42,13 +46,35 @@ strLit  = P.stringLiteral lexer
 integerLit = P.integer lexer
 
 -- The parser
-prog :: Parser [Ast]
-prog = expr `endBy` semi
+prog :: Parser Ast
+prog = statement
 
---- Asts
+--- statements
+statement :: Parser Ast
+statement = topLevel
+
+topLevelDefs :: Parser [(String, Ast)]
+topLevelDefs = many1 $ do whiteSpace
+                          reserved "var"
+                          v <- identifier
+                          reservedOp "="
+                          def <- expr
+                          return (v, def)
+
+topLevel :: Parser Ast
+topLevel = do whiteSpace
+              defs <- topLevelDefs
+              let decls = filter (\(v, _) -> v /= "main") defs
+              return $ case lookup "main" defs of
+                        Just mainBody -> Letrec decls
+                                                (Appliction mainBody
+                                                            (String ""))
+                        _ -> Letrec decls Unit
+
+--- Terms
 term :: Parser Ast
 term  = parens expr <|> var <|> literal <|> funcExpr <|> ifExpr <|> letExpr
-        <|> block
+        <|> block <|> list <|> headExpr <|> tailExpr
 
 str :: Parser Ast
 str = String <$> strLit
@@ -65,6 +91,21 @@ unit = reserved "unit" >> return Unit
 bool :: Parser Ast
 bool = (reserved "true" >> return (Bool True))
        <|> (reserved "false" >> return (Bool False))
+
+list :: Parser Ast
+list = List <$> (brackets $ commaSep expr)
+
+headExpr :: Parser Ast
+headExpr = do whiteSpace
+              reserved "head"
+              l <- expr
+              return $ Car l
+
+tailExpr :: Parser Ast
+tailExpr = do whiteSpace
+              reserved "tail"
+              l <- expr
+              return $ Cdr l
 
 var :: Parser Ast
 var = do whiteSpace
@@ -90,7 +131,7 @@ exprTable =
     [makeInfixExpr "+" BinaryExpr,
      makeInfixExpr "-" BinaryExpr],
     [makeInfixExpr "*" BinaryExpr,
-     makeInfixExpr "/" BinaryExpr] ] 
+     makeInfixExpr "/" BinaryExpr] ]
 
 parserBinExpr :: Parser Ast
 parserBinExpr = buildExpressionParser exprTable preFixExpr
@@ -99,8 +140,10 @@ preFixExpr :: Parser Ast
 preFixExpr =  do whiteSpace
                  e <- term
                  condExpr' e <|> maybeAddSuffix e
-  where addSuffix e0 = do e1 <- parens expr
-                          maybeAddSuffix $ Appliction e0 e1
+  where addSuffix e0 = do es <- parens $ commaSep1 expr
+                          maybeAddSuffix $ foldl (\arg acc -> Appliction arg acc)
+                                                 (Appliction e0 $ head es)
+                                                 (tail es)
         maybeAddSuffix e = addSuffix e
                            <|> return e
        
@@ -115,15 +158,16 @@ condExpr' e = do reservedOp "?"
 funcExpr :: Parser Ast
 funcExpr  = do whiteSpace
                reserved "function"
-               v  <- parens identifier
+               vs  <- parens $ commaSep1 identifier
                body <- expr
-               return $ Function v body
+               return $ foldr (\v acc -> Function v acc)
+                              (Function (last vs) body)
+                              (init vs)
 
 ifExpr :: Parser Ast
 ifExpr = do whiteSpace
             reserved "if"
-            t1 <- expr
-            reserved "then"
+            t1 <- parens expr
             t2 <- expr
             reserved "else"
             t3 <- expr
@@ -138,9 +182,8 @@ letExpr = do whiteSpace
              return $ LetExpr inits body
 
 block :: Parser Ast
-block = braces $ do inits <- localItem `endBy` semi
+block = braces $ do inits <- many localItem
                     body <- expr
-                    optional semi
                     return $ Letrec inits body
 
 localItem :: Parser (String, Ast)
@@ -199,4 +242,4 @@ tyTerm :: Parser Ty
 tyTerm = parens funTy <|> boolTy <|> numTy <|> recordTy <|> refTy <|>
          unitTy <|> topTy
 -}
---- statement
+

@@ -3,6 +3,7 @@ module Interpreter
        where
 
 import Ast
+import Control.Applicative
 import Control.Monad.Trans.Reader
 import Data.Maybe
 import qualified Data.Map as Map
@@ -31,6 +32,7 @@ eval (LetExpr binds body) = do env <- getContext
                                local (const
                                       (Map.union (Map.fromList newBinds) env)) (eval body)
 
+eval (Letrec [] body) = eval body
 eval (Letrec binds body) = getContext >>= \env ->
   let newEnv = Map.union (Map.fromList newBinds) env
       newBinds = map (\(var, term) -> (var, runReader (eval term) newEnv)) binds
@@ -40,6 +42,14 @@ eval (IfExpr (Bool True) t2 _) = eval t2
 eval (IfExpr (Bool False) _ t3) = eval t3
 eval (IfExpr t1 t2 t3) = do t1' <- eval t1
                             eval $ IfExpr t1' t2 t3
+
+eval (List l) = List <$> mapM eval l
+
+eval (Car l) = do List l' <- eval l
+                  return $ head l'
+
+eval (Cdr l) = do List l' <- eval l
+                  return $ List $ tail l'
 
 eval (BinaryExpr op t1 t2) =
   do Number t1' <- eval t1

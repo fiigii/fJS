@@ -15,6 +15,8 @@ data Ast  = Var String
           | BinaryExpr String Ast Ast
           | Closure Ast Context
           | List [Ast]
+          | Car Ast
+          | Cdr Ast 
           deriving (Show, Eq)
 
 data Ty = TyFun Ty Ty
