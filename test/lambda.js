@@ -1,29 +1,20 @@
-(function (x : {right : Bool -> Top}) x.right(true)) 
-	({left => true, right => function (x : Top) x});
+let x = function (x)
+			function (y) {
+				var a = 2;
+				var b = 3;
+				if x == y then a + b else a - b;
+			};
+	y = 1;
+in x(y)(2);
 
-(function (x : {right : Bool -> Bool}) x.right(true)) 
-	({left => true, right => function (x : Bool) x});
-
-(function (x : Bool) x ? {a => true, b => 1} : {b => 2, c => false})
- 	(true).a;
-
-(function (x : Bool) x ? {a => true, b => 1} : {b => 2, c => false})
-	(true).b;
-
-function (x : Bool) x ? 
-					(function (y : {a: Bool, b: Number}) y): 
-					(function (y : {a: Bool, c: Number}) y);
-
-// Ref test
-(function (r : {decc: Unit -> Number, incc : Unit -> Number})
-	(function (_ : Number) r.decc(unit)) (r.decc(unit)) )
-((function (c : Ref Number) {decc => (function (x : Unit) (function (_ : Unit) !c)(c = !c - 1)),
-							 incc => (function (x : Unit) (function (_ : Unit) !c)(c = !c + 1))}) (ref 10));
-
-({x => ref {a => 1}, y => ref 9}.x) = {a => 1, b => 2};
-
-(function (source : {a : Ref Number, b: Ref Number}) 
-	(function (x : Ref Number) 
-			(function (_ : Unit) !(source.a))(x = 199))
-		(source.b))
-	({a => (ref 0), b => ref 9, c => 77 + 6});
+{
+	var f = function (n)
+				if n == 0
+				then 1
+				else n * x(n - 1);
+	var x = function (n)
+				if n == 0
+				then 1
+				else n * f(n - 1);
+	f(4);
+};

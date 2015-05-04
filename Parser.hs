@@ -23,7 +23,7 @@ lexer = P.makeTokenParser emptyDef {
   T.identStart = letter <|> char '_' <|> char '$',
   T.identLetter     = alphaNum,
   T.reservedNames   = ["function", "var", "true", "false", "Bool", "Number",
-                       "Ref", "ref", "Unit", "unit", "Top"],
+                       "Unit", "unit", "let", "if", "then", "else", "in"],
   T.reservedOpNames = ["=", "?", ":", "->", "=>", "+", "-", "*", "/", "!",
                        "==", "!=", ">", "<", ">=", "<="],
   T.caseSensitive   = True
@@ -47,8 +47,8 @@ prog = expr `endBy` semi
 
 --- Asts
 term :: Parser Ast
-term  = parens expr <|> var <|> literal <|> refCreat <|>
-        deRef <|> funcExpr
+term  = parens expr <|> var <|> literal <|> funcExpr <|> ifExpr <|> letExpr
+        <|> block
 
 str :: Parser Ast
 str = String <$> strLit
@@ -57,7 +57,7 @@ num :: Parser Ast
 num = Number . fromIntegral <$> integerLit
 
 literal :: Parser Ast
-literal = bool <|> str <|> record <|> num <|> unit
+literal = bool <|> str <|> num <|> unit
 
 unit :: Parser Ast
 unit = reserved "unit" >> return Unit
@@ -66,22 +66,6 @@ bool :: Parser Ast
 bool = (reserved "true" >> return (Bool True))
        <|> (reserved "false" >> return (Bool False))
 
-record :: Parser Ast
-record = Record $ (braces . commaSep1) recordTerm
-
-recordTerm :: Parser (String, Ast)
-recordTerm = do whiteSpace
-                label <- identifier
-                reservedOp "=>"
-                init <- expr
-                return (label, init)
-
-refCreat :: Parser Ast
-refCreat = reserved "ref" >> term >>= \tm -> return $ Ref tm
-
-deRef :: Parser Ast
-deRef = reservedOp "!" >> term >>= \tm -> return $ DeRef tm
-
 var :: Parser Ast
 var = do whiteSpace
          v <- identifier
@@ -89,14 +73,7 @@ var = do whiteSpace
 
 --- experssions
 expr :: Parser Ast
-expr = assigExpr
-
-assigExpr :: Parser Ast
-assigExpr = do whiteSpace
-               e <- parserBinExpr
-               (do reservedOp "="
-                   rightValue <- assigExpr
-                   return $ Assign e rightValue) <|> return e 
+expr = parserBinExpr
 
 makeInfixExpr str constr = Infix parser AssocLeft
   where parser = do whiteSpace
@@ -122,11 +99,8 @@ preFixExpr :: Parser Ast
 preFixExpr =  do whiteSpace
                  e <- term
                  condExpr' e <|> maybeAddSuffix e
-  where addSuffix e0 = (do e1 <- parens expr
-                           maybeAddSuffix $ Appliction e0 e1) <|>
-                       (do char '.'
-                           label <- identifier
-                           maybeAddSuffix $ Access e0 label)
+  where addSuffix e0 = do e1 <- parens expr
+                          maybeAddSuffix $ Appliction e0 e1
         maybeAddSuffix e = addSuffix e
                            <|> return e
        
@@ -141,18 +115,50 @@ condExpr' e = do reservedOp "?"
 funcExpr :: Parser Ast
 funcExpr  = do whiteSpace
                reserved "function"
-               v  <- parens arg
+               v  <- parens identifier
                body <- expr
                return $ Function v body
 
-arg :: Parser (String, Ty)
-arg = do whiteSpace
-         formal <- identifier
-         reservedOp ":"
-         ty <- parseType
-         return (formal, ty)
+ifExpr :: Parser Ast
+ifExpr = do whiteSpace
+            reserved "if"
+            t1 <- expr
+            reserved "then"
+            t2 <- expr
+            reserved "else"
+            t3 <- expr
+            return $ IfExpr t1 t2 t3
+            
+letExpr :: Parser Ast
+letExpr = do whiteSpace
+             reserved "let"
+             inits <- initItem `endBy` semi
+             reserved "in"
+             body <- expr
+             return $ LetExpr inits body
 
+block :: Parser Ast
+block = braces $ do inits <- localItem `endBy` semi
+                    body <- expr
+                    optional semi
+                    return $ Letrec inits body
+
+localItem :: Parser (String, Ast)
+localItem = do whiteSpace
+               reserved "var"
+               var <- identifier
+               reservedOp "="
+               init <- expr
+               return (var, init)
+
+initItem :: Parser (String, Ast)
+initItem = do whiteSpace
+              var <- identifier
+              reservedOp "="
+              init <- expr
+              return (var, init)
 --- Types
+              {-
 parseType = funTy
 
 funTy :: Parser Ty
@@ -171,7 +177,7 @@ numTy = reserved "Number" >> return TyNum
 nuitTy = reserved "Unit" >> return TyUnit
 
 recordTy :: Parser Ty
-recordTy =  TyRecord $ (braces . commaSep1) recordTyItem
+recordTy =  TyRecord <$> (braces . commaSep1) recordTyItem
 
 recordTyItem :: Parser (String, Ty)
 recordTyItem =  do whiteSpace
@@ -192,5 +198,5 @@ topTy = reserved "Top" >> return TyTop
 tyTerm :: Parser Ty
 tyTerm = parens funTy <|> boolTy <|> numTy <|> recordTy <|> refTy <|>
          unitTy <|> topTy
-
+-}
 --- statement

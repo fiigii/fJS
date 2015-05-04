@@ -3,11 +3,13 @@ module Main where
 import System.Environment
 import System.IO
 import Control.Applicative
-import Control.Monad
+import Control.Monad.Trans.Reader
+
+import qualified Data.Map as Map
 
 import Parser
-import TypeChecker
---import Interpreter
+--import TypeChecker
+import Interpreter
 import Ast
 
 main :: IO ()
@@ -22,11 +24,8 @@ main = withFile
                                                  
 -- Some glue code
 interpreter :: String -> [String]
-interpreter source = case jsparse source of Right ts -> map (takeOut . interp) ts
+interpreter source = case jsparse source of Right ts -> map interp ts
                                             Left error -> [show error]
                                                               
-  where interp t = do ty <- typeOf [] t
-                      return $ show ty
-                      --return $ show (fst $ eval [] dt) ++ ": " ++ show ty
-        takeOut (Right str) = str
-        takeOut (Left str)  = str
+  where interp t = show $ runReader (eval t) Map.empty
+
