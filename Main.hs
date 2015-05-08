@@ -28,6 +28,6 @@ interpreter source = case jsparse source of Right ts -> case interp ts of Right 
                                             Left error -> show error
                         
                                                               
-  where interp t = do ty <- infer $ typeInference (TypeEnv Map.empty) t
+  where interp t = do ty <- infer t
                       return $ show (interpreate t) ++ " : " ++ show ty 
 

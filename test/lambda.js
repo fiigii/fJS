@@ -26,8 +26,7 @@ function main (argument) {
 		else n * f(n - 1)
 	});
 	var x = 4;
-	{
-		var l = length([x]) : [x, x, f(x), f(f(x))];
-		elem
-	}
+	var y = x;
+	var l = length([x]) : [x, x, f(x), f(f(x))];
+	y;
 }
