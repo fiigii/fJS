@@ -1,14 +1,33 @@
-var g = function (x, y, t) {
-	var a = 2
-	var b = 3
-	if (x == y) a + b else a - b
-}
-
-var f = function (n) {
+function f (n) {
 	if (n == 0) 1
 	else n * f(n - 1)
+};
+
+
+function length (list) {
+	if (nil? list) 0
+	else 1 + length(tail list)
 }
-	
-var main = function (arg) {
-	f(g(1, 1, 1))
+
+function fix(f) {
+	var x = f(x);
+	x
+}
+
+var elem = function (e, list) {
+	if (nil? list) false
+	else if (e == head list) true
+	else elem(e, tail list)
+}
+
+function main (argument) {
+	var f = fix(function(f) function (n) {
+		if (n == 0) 1
+		else n * f(n - 1)
+	});
+	var x = 4;
+	{
+		var l = length([x]) : [x, x, f(x), f(f(x))];
+		elem
+	}
 }

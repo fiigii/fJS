@@ -23,10 +23,10 @@ lexer = P.makeTokenParser emptyDef {
   T.commentLine  = "//",
   T.nestedComments = True,
   T.identStart = letter <|> char '_' <|> char '$',
-  T.identLetter     = alphaNum,
+  T.identLetter     = alphaNum <|> char '_' <|> char '?',
   T.reservedNames   = ["function", "var", "true", "false", "Bool", "Number",
                        "Unit", "unit", "let", "if", "then", "else", "in", "head",
-                       "tail"],
+                       "tail", "nil?"],
   T.reservedOpNames = ["=", "?", ":", "->", "=>", "+", "-", "*", "/", "!",
                        "==", "!=", ">", "<", ">=", "<="],
   T.caseSensitive   = True
@@ -47,23 +47,37 @@ integerLit = P.integer lexer
 
 -- The parser
 prog :: Parser Ast
-prog = statement
+prog = do pro <- statement
+          eof
+          return pro
 
 --- statements
 statement :: Parser Ast
 statement = topLevel
 
-topLevelDefs :: Parser [(String, Ast)]
-topLevelDefs = many1 $ do whiteSpace
-                          reserved "var"
-                          v <- identifier
-                          reservedOp "="
-                          def <- expr
-                          return (v, def)
+varDef :: Parser (String, Ast)
+varDef = do whiteSpace
+            reserved "var"
+            v <- identifier
+            reservedOp "="
+            def <- expr
+            optional semi
+            return (v, def)
+
+functionDef :: Parser (String, Ast)
+functionDef = do whiteSpace
+                 reserved "function"
+                 name <- identifier
+                 formal <- parens $ commaSep1 identifier
+                 body <- expr
+                 optional semi
+                 return (name, foldr (\v acc -> Function v acc)
+                                     (Function (last formal) body)
+                                     (init formal))
 
 topLevel :: Parser Ast
 topLevel = do whiteSpace
-              defs <- topLevelDefs
+              defs <- many1 $ varDef <|> functionDef
               let decls = filter (\(v, _) -> v /= "main") defs
               return $ case lookup "main" defs of
                         Just mainBody -> Letrec decls
@@ -74,7 +88,7 @@ topLevel = do whiteSpace
 --- Terms
 term :: Parser Ast
 term  = parens expr <|> var <|> literal <|> funcExpr <|> ifExpr <|> letExpr
-        <|> block <|> list <|> headExpr <|> tailExpr
+        <|> block <|> list <|> headExpr <|> tailExpr <|> isNil 
 
 str :: Parser Ast
 str = String <$> strLit
@@ -107,6 +121,12 @@ tailExpr = do whiteSpace
               l <- expr
               return $ Cdr l
 
+isNil :: Parser Ast
+isNil = do whiteSpace
+           reserved "nil?"
+           l <- expr
+           return $ IsNil l
+
 var :: Parser Ast
 var = do whiteSpace
          v <- identifier
@@ -128,6 +148,7 @@ exprTable =
      makeInfixExpr "<=" BinaryExpr],
     [makeInfixExpr "==" BinaryExpr,
      makeInfixExpr "!=" BinaryExpr],
+    [Infix (do {whiteSpace; reservedOp ":"; return Cons}) AssocLeft],
     [makeInfixExpr "+" BinaryExpr,
      makeInfixExpr "-" BinaryExpr],
     [makeInfixExpr "*" BinaryExpr,
@@ -182,8 +203,9 @@ letExpr = do whiteSpace
              return $ LetExpr inits body
 
 block :: Parser Ast
-block = braces $ do inits <- many localItem
+block = braces $ do inits <- localItem `endBy` semi
                     body <- expr
+                    optional semi
                     return $ Letrec inits body
 
 localItem :: Parser (String, Ast)
@@ -200,46 +222,3 @@ initItem = do whiteSpace
               reservedOp "="
               init <- expr
               return (var, init)
---- Types
-              {-
-parseType = funTy
-
-funTy :: Parser Ty
-funTy = do whiteSpace
-           t <- tyTerm
-           (do reservedOp "->"
-               tt <- funTy
-               return $ TyFun t tt) <|> return t
-
-boolTy :: Parser Ty
-boolTy = reserved "Bool" >> return TyBool
-
-numTy :: Parser Ty
-numTy = reserved "Number" >> return TyNum
-
-nuitTy = reserved "Unit" >> return TyUnit
-
-recordTy :: Parser Ty
-recordTy =  TyRecord <$> (braces . commaSep1) recordTyItem
-
-recordTyItem :: Parser (String, Ty)
-recordTyItem =  do whiteSpace
-                   label <- identifier
-                   reservedOp ":"
-                   ty <- parseType
-                   return (label, ty)
-
-refTy :: Parser Ty
-refTy = reserved "Ref" >> parseType >>= \t -> return $ TyRef t
-
-unitTy :: Parser Ty
-unitTy = reserved "Unit" >> return TyUnit
-
-topTy :: Parser Ty
-topTy = reserved "Top" >> return TyTop
-
-tyTerm :: Parser Ty
-tyTerm = parens funTy <|> boolTy <|> numTy <|> recordTy <|> refTy <|>
-         unitTy <|> topTy
--}
-

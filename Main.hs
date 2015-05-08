@@ -1,6 +1,5 @@
 module Main where
 
-import System.Environment
 import System.IO
 import Control.Applicative
 import Control.Monad.Trans.Reader
@@ -8,7 +7,7 @@ import Control.Monad.Trans.Reader
 import qualified Data.Map as Map
 
 import Parser
---import TypeChecker
+import TypeInferencer
 import Interpreter
 import Ast
 
@@ -24,8 +23,11 @@ main = withFile
                                                  
 -- Some glue code
 interpreter :: String -> String
-interpreter source = case jsparse source of Right ts -> interp ts
+interpreter source = case jsparse source of Right ts -> case interp ts of Right s -> s
+                                                                          Left e -> e
                                             Left error -> show error
+                        
                                                               
-  where interp t = show $ runReader (eval t) Map.empty
+  where interp t = do ty <- infer $ typeInference (TypeEnv Map.empty) t
+                      return $ show (interpreate t) ++ " : " ++ show ty 
 

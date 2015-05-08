@@ -1,5 +1,5 @@
 module Interpreter
-       (eval)
+       (interpreate)
        where
 
 import Ast
@@ -11,7 +11,9 @@ import qualified Data.Map as Map
 type Environment = Reader Context
              
 -- Interpreter
-
+interpreate :: Ast -> Ast
+interpreate t = runReader (eval t) Map.empty
+    
 getContext :: Environment Context
 getContext = ask
 
@@ -44,12 +46,15 @@ eval (IfExpr t1 t2 t3) = do t1' <- eval t1
                             eval $ IfExpr t1' t2 t3
 
 eval (List l) = List <$> mapM eval l
-
 eval (Car l) = do List l' <- eval l
                   return $ head l'
-
 eval (Cdr l) = do List l' <- eval l
                   return $ List $ tail l'
+eval (IsNil l) = do List l' <- eval l
+                    return $ Bool $ null l'
+eval (Cons h l) = do h' <- eval h
+                     List l' <- eval l
+                     return $ List $ h' : l'
 
 eval (BinaryExpr op t1 t2) =
   do Number t1' <- eval t1
@@ -66,8 +71,8 @@ eval (BinaryExpr op t1 t2) =
                          "<=" -> logOp (<=)
                          "==" -> logOp (==)
                          "!=" -> logOp (/=)
-                                                                  
-                                                       
+                         _ -> error "Arithmatic error"
+                         
 eval t = return t
 
 
