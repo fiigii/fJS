@@ -34,8 +34,8 @@ eval (LetExpr binds body) = do env <- getContext
                                local (const
                                       (Map.union (Map.fromList newBinds) env)) (eval body)
 
-eval (Letrec [] body) = eval body
-eval (Letrec binds body) = getContext >>= \env ->
+eval (LetRec [] body) = eval body
+eval (LetRec binds body) = getContext >>= \env ->
   let newEnv = Map.union (Map.fromList newBinds) env
       newBinds = map (\(var, term) -> (var, runReader (eval term) newEnv)) binds
   in local (const newEnv) (eval body)

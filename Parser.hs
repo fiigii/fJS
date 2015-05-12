@@ -148,7 +148,7 @@ exprTable =
      makeInfixExpr "<=" BinaryExpr],
     [makeInfixExpr "==" BinaryExpr,
      makeInfixExpr "!=" BinaryExpr],
-    [Infix (do {whiteSpace; reservedOp ":"; return Cons}) AssocLeft],
+    [Infix (do {whiteSpace; reservedOp ":"; return Cons}) AssocRight],
     [makeInfixExpr "+" BinaryExpr,
      makeInfixExpr "-" BinaryExpr],
     [makeInfixExpr "*" BinaryExpr,
@@ -206,7 +206,7 @@ block :: Parser Ast
 block = braces $ do inits <- localItem `endBy` semi
                     body <- expr
                     optional semi
-                    return $ Letrec inits body
+                    return $ LetRec inits body
 
 localItem :: Parser (String, Ast)
 localItem = do whiteSpace

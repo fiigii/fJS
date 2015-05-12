@@ -9,7 +9,7 @@ data Ast  = Var String
           | Appliction Ast Ast
           | IfExpr Ast Ast Ast
           | LetExpr [(String, Ast)] Ast
-          | Letrec  [(String, Ast)] Ast
+          | LetRec  [(String, Ast)] Ast
           | Bool Bool
           | String String
           | Unit

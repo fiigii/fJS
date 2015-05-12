@@ -3,7 +3,6 @@ function f (n) {
 	else n * f(n - 1)
 };
 
-
 function length (list) {
 	if (nil? list) 0
 	else 1 + length(tail list)
@@ -20,13 +19,18 @@ var elem = function (e, list) {
 	else elem(e, tail list)
 }
 
+function map (f, list) {
+	if (nil? list) []
+	else {
+		f(head list) : map(f, tail list)
+	}
+}
+
 function main (argument) {
-	var f = fix(function(f) function (n) {
-		if (n == 0) 1
-		else n * f(n - 1)
-	});
-	var x = 4;
-	var y = x;
-	var l = length([x]) : [x, x, f(x), f(f(x))];
-	y;
+	var list = 0 : 1 : [2, 3, 4, 5];
+	var element = 10;
+	function (x, y, z) {
+		if (x) function (i) y(i)
+		else function (i) z(i)
+	}
 }
