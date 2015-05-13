@@ -80,10 +80,10 @@ topLevel = do whiteSpace
               defs <- many1 $ varDef <|> functionDef
               let decls = filter (\(v, _) -> v /= "main") defs
               return $ case lookup "main" defs of
-                        Just mainBody -> Letrec decls
-                                                (Appliction mainBody
+                        Just mainBody -> LetRec decls
+                                                (Application mainBody
                                                             (String ""))
-                        _ -> Letrec decls Unit
+                        _ -> LetRec decls Unit
 
 --- Terms
 term :: Parser Ast
@@ -162,8 +162,8 @@ preFixExpr =  do whiteSpace
                  e <- term
                  condExpr' e <|> maybeAddSuffix e
   where addSuffix e0 = do es <- parens $ commaSep1 expr
-                          maybeAddSuffix $ foldl (\arg acc -> Appliction arg acc)
-                                                 (Appliction e0 $ head es)
+                          maybeAddSuffix $ foldl (\arg acc -> Application arg acc)
+                                                 (Application e0 $ head es)
                                                  (tail es)
         maybeAddSuffix e = addSuffix e
                            <|> return e

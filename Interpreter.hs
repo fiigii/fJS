@@ -24,9 +24,9 @@ eval (Var x) = do env <- getContext
 eval f@(Function _ _) = do env <- getContext
                            return $ Closure f env
 
-eval (Appliction t1 t2) = do (Closure (Function var body) env') <- eval t1
-                             argu <- eval t2
-                             local (const (Map.insert var argu env')) (eval body)
+eval (Application t1 t2) = do (Closure (Function var body) env') <- eval t1
+                              argu <- eval t2
+                              local (const (Map.insert var argu env')) (eval body)
 
 eval (LetExpr binds body) = do env <- getContext
                                let newBinds = map (\(var, term) ->
@@ -45,6 +45,7 @@ eval (IfExpr (Bool False) _ t3) = eval t3
 eval (IfExpr t1 t2 t3) = do t1' <- eval t1
                             eval $ IfExpr t1' t2 t3
 
+eval l@(List []) = return l
 eval (List l) = List <$> mapM eval l
 eval (Car l) = do List l' <- eval l
                   return $ head l'

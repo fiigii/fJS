@@ -1,12 +1,13 @@
 module Ast where
 
 import qualified Data.Map as Map
+import Data.List (intersperse)
 
 type Context = Map.Map String Ast
 
 data Ast  = Var String
           | Function String Ast
-          | Appliction Ast Ast
+          | Application Ast Ast
           | IfExpr Ast Ast Ast
           | LetExpr [(String, Ast)] Ast
           | LetRec  [(String, Ast)] Ast
@@ -30,8 +31,10 @@ data Type = TyVar String
           | TyString
           | TyList Type
           | TyFun Type Type
-          deriving (Eq)
-
+            deriving (Eq)
+                     
+data Scheme = Forall [String] Type
+              
 comparer =  ["==", "!=", "<=", "<", ">=", ">"]
 arith = ["+", "-", "*", "/"]
 
@@ -53,6 +56,9 @@ instance Show Ast where
   show (String s) = s
   show Unit = "()"
   show (Number n) = show n
-  show (List l) = "[" ++ (foldl (\acc e -> acc ++ "," ++ show e) (show $ head l) (tail l)) ++ "]"
+  show (List l) = "[" ++ unwords (intersperse "," $ map show l) ++ "]"
   show _ = ""
 
+instance Show Scheme where
+  show (Forall [] ty) = show ty
+  show (Forall vs ty) = "forall " ++ unwords (intersperse "," vs) ++ ". " ++ show ty

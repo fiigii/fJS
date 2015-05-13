@@ -1,9 +1,13 @@
-module TypeInferencer where
+{-# LANGUAGE FlexibleInstances #-}
+module TypeInferencer
+       (typeInference)
+       where
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set (union, (\\))
+import Data.List (nub)
 import Control.Applicative
 import Control.Monad.Except
 import Control.Monad.RWS
@@ -11,7 +15,6 @@ import Control.Monad.Identity
 
 import Ast
 
-data Scheme = Forall [String] Type
 type Subst = Map.Map String Type
 newtype TypeEnv = TypeEnv (Map.Map String Scheme)
 
@@ -43,14 +46,19 @@ instance Substitutable TypeEnv where
   freeTypeVar (TypeEnv env) = freeTypeVar $ Map.elems env
   applySubst subst (TypeEnv env) = TypeEnv $ Map.map (applySubst subst) env
 
-extendEnv :: TypeEnv -> (String, Scheme) -> TypeEnv
-extendEnv (TypeEnv env) (x, s) = TypeEnv $ Map.insert x s env
+instance Substitutable Constraint where
+  freeTypeVar (t1, t2) = freeTypeVar t1 `union` freeTypeVar t2
+  applySubst s (t1, t2) = (applySubst s t1, applySubst s t2)
 
 multiExtendEnv:: TypeEnv -> [(String, Scheme)] -> TypeEnv
-multiExtendEnv (TypeEnv env) ls = TypeEnv $ Map.fromList ls `Map.union` env
+multiExtendEnv (TypeEnv env) ls =
+  TypeEnv $ foldr (\(v, s) acc -> Map.insert v s acc) env ls
 
 remove :: TypeEnv -> String -> TypeEnv
 remove (TypeEnv env) v = TypeEnv $ Map.delete v env
+
+emptyEnv :: TypeEnv
+emptyEnv = TypeEnv Map.empty
 
 emptySubst :: Subst
 emptySubst = Map.empty
@@ -69,12 +77,16 @@ occurCheck v t = Set.member v $ freeTypeVar t
 fresh :: TypeInfer Type
 fresh = do i <- get
            put $ i + 1
-           return $ TyVar $ "'" ++ (letters !! i)
-  where letters = [1..] >>= flip replicateM ['a'..'z']
+           return $ TyVar $ letters !! i
+
+letters :: [String]
+letters = [1..] >>= flip replicateM ['a'..'z']
 
 instantiate :: Scheme -> TypeInfer Type
 instantiate (Forall vs t) = do vs' <- mapM (const fresh) vs
                                let s =  Map.fromList $ zip vs vs'
+                                   relation = zip (map TyVar vs) vs'
+                               mapM_ (uncurry mustEqual) relation
                                return $ applySubst s t
 
 generalize :: TypeEnv -> Type -> Scheme
@@ -89,10 +101,24 @@ type Unifier = (Subst, [Constraint])
 
 initEnv :: TypeEnv
 initEnv = TypeEnv Map.empty
-{-
-typeInference :: Ast -> Either String (Type, [Constraint])
-typeInference t = runInfer initEnv $ 
--}
+
+typeInference :: Ast -> Either String Scheme
+typeInference t = do
+  (ty, cs) <- runInfer initEnv $ infer t
+  su <- runSolve cs
+  return $ closeOver $ applySubst su ty
+
+closeOver :: Type -> Scheme
+closeOver = normalize <$> generalize emptyEnv
+
+normalize :: Scheme -> Scheme
+normalize (Forall _ ty) = Forall (map snd ord) (normalizedType ty)
+  where ord = zip (nub $ Set.toList $ freeTypeVar ty) letters
+        normalizedType (TyFun t1 t2) = TyFun (normalizedType t1) (normalizedType t2)
+        normalizedType (TyList t) = TyList $ normalizedType t
+        normalizedType (TyVar v) = TyVar $ fromJust $ lookup v ord
+        normalizedType t = t
+
 runInfer :: TypeEnv -> TypeInfer Type -> Either String (Type, [Constraint])
 runInfer env m = runExcept $ evalRWST m env 0
 
@@ -117,7 +143,7 @@ infer (Function x body) = do
   t <- infer body `withEnv` [(x, Forall [] ty)]
   return $ TyFun ty t
   
-infer (Appliction fun arg) = do
+infer (Application fun arg) = do
   tf <- infer fun
   ta <- infer arg
   tr <- fresh
@@ -156,7 +182,6 @@ infer (IfExpr e1 e2 e3) = do
 infer (BinaryExpr op e1 e2) = do
   t1 <- infer e1
   t2 <- infer e2
-  t1 `mustEqual` t2
   t1 `mustEqual` TyNum
   t2 `mustEqual` TyNum
   if op `elem` arith then return TyNum
@@ -165,10 +190,10 @@ infer (BinaryExpr op e1 e2) = do
               
 infer (List []) = TyList <$> fresh
 infer (List l) = do
-  tv <- fresh
-  types <- mapM infer l
-  mapM_ (mustEqual tv) types
-  return $ TyList tv
+  ty <- infer $ head l
+  types <- mapM infer $ tail l
+  mapM_ (mustEqual ty) types
+  return $ TyList ty
   
 infer (IsNil e) = do
   ty <- infer e
@@ -200,18 +225,36 @@ infer (String _) = return TyString
 infer Unit = return TyUnit
 infer _ = throwError "Unknow Term"
 
---runSolve :: [Constraint] -> Either String Subst
---runSolve cs = runIdentity $ runExceptT $ solver (emptySubst, cs)
-
 unify :: Type -> Type -> Solve Subst
 unify t1 t2 | t1 == t2 = return emptySubst
 unify (TyVar v) t = v `bind` t
 unify t (TyVar v) = v `bind` t
 unify (TyList t1) (TyList t2) = unify t1 t2
+unify (TyFun ta1 tr1) (TyFun ta2 tr2) = unifyMany [ta1, tr1] [ta2, tr2]
+unify t1 t2 = throwError $ "Cannot Match Type: " ++ show t1 ++ " with " ++ show t2
 
+unifyMany :: [Type] -> [Type] -> Solve Subst
+unifyMany [] [] = return emptySubst
+unifyMany (t1 : ts1) (t2 : ts2) = do
+  sub <- unify t1 t2
+  sub' <- unifyMany (applySubst sub ts1) (applySubst sub ts2)
+  return $ sub' `o` sub
+unifyMany t1 t2 = throwError $ "Cannot Match Type: " ++ show t1 ++ " with " ++ show t2
+
+solver :: Unifier -> Solve Subst
+solver (su, []) = return su
+solver (su, ((t1, t2) : cs')) = do
+  su' <- unify t1 t2
+  solver (su' `o` su, applySubst su' cs')
+
+runSolve :: [Constraint] -> Either String Subst
+runSolve cs = runIdentity $ runExceptT $ solver (emptySubst, cs)
 {-
 -- on-line inference implementation
 type TypeInfer = ExceptT String (State Int)
+
+extendEnv :: TypeEnv -> (String, Scheme) -> TypeEnv
+extendEnv (TypeEnv env) (x, s) = TypeEnv $ Map.insert x s env
 
 unify :: Type -> Type -> TypeInfer Subst
 unify (TyFun a r) (TyFun a' r') = do s1 <- unify a a'
