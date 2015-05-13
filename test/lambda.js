@@ -26,11 +26,20 @@ function map (f, list) {
 	}
 }
 
+function generateFrom (start, end) {
+	var help = function (start, list) {
+		if (start >= end) {
+			end : list
+		} else {
+			start : help(start + 1, list)
+		}
+	};
+	help(start, [])
+}
+
 function main (argument) {
-	var list = 0 : 1 : [2, 3, 4, 5];
+	var list = 10 : 1 : [2, 3, 4, 5];
 	var element = 10;
-	function (x, y, z) {
-		if (x) function (i) y(i)
-		else function (i) z(i)
-	}
+	var a = generateFrom(0);
+	fix
 }

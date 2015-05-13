@@ -85,8 +85,8 @@ letters = [1..] >>= flip replicateM ['a'..'z']
 instantiate :: Scheme -> TypeInfer Type
 instantiate (Forall vs t) = do vs' <- mapM (const fresh) vs
                                let s =  Map.fromList $ zip vs vs'
-                                   relation = zip (map TyVar vs) vs'
-                               mapM_ (uncurry mustEqual) relation
+                                --   relation = zip (map TyVar vs) vs'
+                               --mapM_ (uncurry mustEqual) relation
                                return $ applySubst s t
 
 generalize :: TypeEnv -> Type -> Scheme
@@ -168,7 +168,8 @@ infer (LetRec binds body) = do
       earlyEnv = env `multiExtendEnv` emptySchemes
   initTypes <- mapM (\e -> infer e `withEnv` emptySchemes) inits
   mapM_ (uncurry mustEqual) $ zip tvs initTypes
-  let schemes = map (generalize earlyEnv) initTypes
+  --let schemes = map (generalize earlyEnv) initTypes
+  let schemes = map (Forall []) initTypes
   infer body `withEnv` zip vars schemes
   
 infer (IfExpr e1 e2 e3) = do

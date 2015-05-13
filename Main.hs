@@ -23,11 +23,13 @@ main = withFile
                                                  
 -- Some glue code
 interpreter :: String -> String
-interpreter source = case jsparse source of Right ts -> case interp ts of Right s -> s
-                                                                          Left e -> e
-                                            Left error -> show error
+interpreter source = case jsparse source of
+                      Right ts -> (case interp ts of Right s -> s
+                                                     Left e -> e)
+                      Left error -> show error
                         
                                                               
-  where interp t = do ty <- infer t
-                      return $ show (interpreate t) ++ " : " ++ show ty 
+  where interp t = do ty <- typeInference t
+                      let result = interpreate t
+                      return $ show result ++ " : " ++ show ty 
 
