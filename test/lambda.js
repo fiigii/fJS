@@ -41,5 +41,5 @@ function main (argument) {
 	var list = 10 : 1 : [2, 3, 4, 5];
 	var element = 10;
 	var a = generateFrom(0);
-	fix
+	map(a, list)
 }
