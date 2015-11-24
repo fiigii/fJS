@@ -1,4 +1,4 @@
-# Come 
+# fJS 
 A static type programming language implemented in Haskell.  
 
 ## Installation  
@@ -6,6 +6,13 @@ A static type programming language implemented in Haskell.
 > ./Main   
 
 These commands compile the interpreter and execute the program in "test/lambda.js"  
+
+## Features  
+* JavaScript-like sytax (without "return");  
+* Automatic currying;  
+* Furely functional;  
+* Statically typed;
+* Hindley–Milner type system  
 
 ## Syntax
 This language adpots a JavaScript-like syntax that looks like:  
@@ -17,7 +24,7 @@ This language adpots a JavaScript-like syntax that looks like:
     function main(argument) {
         fix
     }
-This code segment (at toplevel) means:  
+This code segment (at toplevel) will be compiled to the intermediate representation:    
 
     let rec fix = function (f) 
                     let rec x = f(x)
