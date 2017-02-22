@@ -10,7 +10,7 @@ These commands compile the interpreter and execute the program in "test/lambda.j
 ## Features  
 * JavaScript-like sytax (without "return");  
 * Automatic currying;  
-* Furely functional;  
+* Purely functional;  
 * Statically typed;
 * Hindley–Milner type system  
 
@@ -33,7 +33,7 @@ This code segment (at toplevel) will be compiled to the intermediate representat
 
 Every file has to contain a "main" function that is same with the C language.  
 
-This language supports several types (function, list, Number, Bool, String) and the operations one those types (head, tail, cons on lists; +, -, *, \, ==, !=, <, >, <=, >= ... on Number, if else on Bool).
+This language supports several types (function, list, Number, Bool, String) and the operations on those types (head, tail, cons on lists; +, -, *, \, ==, !=, <, >, <=, >= ... on Number, if else on Bool).
 
 ## TODO
 * Polymorphism
